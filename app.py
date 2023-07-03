@@ -13,7 +13,6 @@ streamlit-extras
 import streamlit as st
 from dotenv import load_dotenv
 import pickle
-
 from PyPDF2 import PdfReader
 from streamlit_extras.add_vertical_space import add_vertical_space
 from langchain.text_splitter import RecursiveCharacterTextSplitter
@@ -24,13 +23,15 @@ from langchain.chains.question_answering import load_qa_chain
 from langchain.callbacks import get_openai_callback
 import os
 
-# openai.api_key = "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"
+
+
 load_dotenv()
 
 def main():
-    st.header("Chat with PDF")
     # upload a PDF file
-    pdf = st.file_uploader("Upload your PDF", type='pdf')
+    with st.sidebar:
+        st.header("Chat with PDF")
+        pdf = st.file_uploader("Upload your PDF", type='pdf')
     if pdf is not None:
         pdf_reader = PdfReader(pdf)
         text = ""
@@ -57,18 +58,15 @@ def main():
             VectorStore = FAISS.from_texts(chunks, embedding=embeddings)
             with open(f"{store_name}.pkl", "wb") as f:
                 pickle.dump(VectorStore, f)
-        # embeddings = OpenAIEmbeddings()
-        # VectorStore = FAISS.from_texts(chunks, embedding=embeddings)
-        # Accept user questions/query
-        # query = st.chat_input("Ask questions about your PDF file:")
-        # st.write(query)
+       
         if "messages" not in st.session_state:
             st.session_state["messages"] = [{"role": "assistant", "content": "How can I help you?"}]
 
         for msg in st.session_state.messages:
             st.chat_message(msg["role"]).write(msg["content"])
 
-        if prompt := st.chat_input():
+        prompt = st.chat_input()
+        if prompt:
             st.session_state.messages.append({"role": "user", "content": prompt})
             st.chat_message("user").write(prompt)
             if prompt:
@@ -76,11 +74,10 @@ def main():
                 docs = VectorStore.similarity_search(query=prompt, k=3)
                 llm = OpenAI()
                 chain = load_qa_chain(llm=llm, chain_type="stuff")
-                with get_openai_callback() as cb:
-                    response = chain.run(input_documents=docs, question=st.session_state.messages)
+                # with get_openai_callback() as cb:
+                response = chain.run(input_documents=docs, question=st.session_state.messages)
                     # print(cb)
                 # st.write(response)
-                # msg = response.choices[0].message
                 st.session_state.messages.append({"role": "assistant", "content": response})
                 st.chat_message("assistant").write(response)
 
